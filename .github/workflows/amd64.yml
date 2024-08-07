@@ -20,32 +20,33 @@ jobs:
           docker system prune -a -f
           docker volume prune -f
 
-    - name: Pull Docker Images and Package
+    - name: Pull Docker Images
       run: |
-        images="${{ github.event.inputs.docker_images }}"
-        IFS=',' read -r -a image_array <<< "$images"
-        safe_names=()
+        IFS=',' read -ra image_array <<< "${{ github.event.inputs.docker_images }}"
         for image in "${image_array[@]}"; do
           echo "Processing image: $image"
-          docker pull "$image" --platform "linux/amd64"
           
           # Create a safe filename
           safe_filename=$(echo "$image" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-          safe_names+=("$safe_filename")
+          
+          echo "Pulling image: $image"
+          docker pull "$image" --platform "linux/amd64"
           
           echo "Saving image as: ${safe_filename}-amd64.tar"
           docker save "$image" -o "${safe_filename}-amd64.tar"
+          
+          # Add the safe filename to GITHUB_OUTPUT for use in next step
+          echo "$safe_filename" >> $GITHUB_OUTPUT
         done
-        
-        # Join safe names into a comma-separated string
-        safe_names_string=$(IFS=,; echo "${safe_names[*]}")
-        echo "SAFE_NAMES=$safe_names_string" >> $GITHUB_ENV
 
-    - name: Upload artifact
+    - name: Upload Docker image artifacts
       uses: actions/upload-artifact@v4
+      strategy:
+        matrix:
+          safe_filename: ${{ steps.process_images.outputs.* }}
       with:
-        name: ${{ env.SAFE_NAMES }}.tar
-        path: ./*.tar
+        name: ${{ matrix.safe_filename }}-amd64
+        path: ${{ matrix.safe_filename }}-amd64.tar
         retention-days: 1  # 将保留天数设置为 1 天 最多可设置90天
 
     - name: Clean up intermediate files
