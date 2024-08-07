@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       matrix:
-        description: '需要保存的镜像，用JSON列表格式输入。'
+        description: 'Images to be saved, input as JSON list.'
         required: true
         default: '["alpine:latest"]'
 
@@ -19,19 +19,19 @@ jobs:
     - id: pull_images
       name: Pull Docker Images
       run: |
-        echo "Processing image: $image"
+        echo "Processing image: ${{ matrix.image }}"
           
         # Create a safe filename
-        safe_filename=$(echo "$image" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+        safe_filename=$(echo "${{ matrix.image }}" | sed -e 's/[^A-Za-z0-9._-]/_/g')
           
-        echo "Pulling image: $image"
-        docker pull "$image" --platform "linux/amd64"
+        echo "Pulling image: ${{ matrix.image }}"
+        docker pull "${{ matrix.image }}" --platform "linux/amd64"
           
         echo "Saving image as: ${safe_filename}-amd64.tar"
-        docker save "$image" -o "${safe_filename}-amd64.tar"
+        docker save "${{ matrix.image }}" -o "${safe_filename}-amd64.tar"
           
         # Add the safe filename to GITHUB_OUTPUT for use in next step
-        echo "safe_filename=$safe_filename" >> $GITHUB_OUTPUT
+        echo "safe_filename=${{ matrix.image }}" >> $GITHUB_OUTPUT
         done
 
     - name: Upload Docker image artifacts
@@ -40,7 +40,3 @@ jobs:
         name: ${{ steps.pull_images.outputs.*.safe_filename }}-amd64
         path: ${{ steps.pull_images.outputs.*.safe_filename }}-amd64.tar
         retention-days: 1  # 将保留天数设置为 1 天 最多可设置90天
-
-    - name: Clean up intermediate files
-      run: |
-        rm *-amd64.tar
