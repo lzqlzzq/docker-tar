@@ -32,7 +32,6 @@ jobs:
           
         # Add the safe filename to GITHUB_OUTPUT for use in next step
         echo "safe_filename=${{ matrix.image }}" >> $GITHUB_OUTPUT
-        done
 
     - name: Upload Docker image artifacts
       uses: actions/upload-artifact@v4
