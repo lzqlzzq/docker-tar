@@ -20,20 +20,21 @@ jobs:
           docker system prune -a -f
           docker volume prune -f
 
-    - name: Create substituted image name
+    - name: Pull Docker Images and Package
+      run: |
+        images="${{ github.event.inputs.docker_images }}"
+        IFS=',' read -r -a image_array <<< "$images"
+        for image in "${image_array[@]}"; do
+          docker pull "${image}" --platform "linux/amd64"
+          substituted_name=$(echo "${image}" | tr '/:' '__')
+          docker save "${image}" -o "${substituted_name}-amd64.tar"
+        done
+
+    - name: Create substituted artifact name
       run: |
         images="${{ github.event.inputs.docker_images }}"
         substituted_name=$(echo "$images" | tr '/:' '__')
         echo "SUBSTITUTED_NAME=$substituted_name" >> $GITHUB_ENV
-
-    - name: Pull Docker Images and Package
-      run: |
-        images="${{ env.SUBSTITUTED_NAME }}"
-        IFS=',' read -r -a image_array <<< "$images"
-        for image in "${image_array[@]}"; do
-          docker pull "${image}" --platform "linux/amd64"
-          docker save "${image}" -o "$image.tar"
-        done
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
