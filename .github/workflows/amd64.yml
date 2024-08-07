@@ -24,27 +24,27 @@ jobs:
       run: |
         images="${{ github.event.inputs.docker_images }}"
         IFS=',' read -r -a image_array <<< "$images"
+        safe_names=()
         for image in "${image_array[@]}"; do
           echo "Processing image: $image"
           docker pull "$image" --platform "linux/amd64"
           
           # Create a safe filename
           safe_filename=$(echo "$image" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+          safe_names+=("$safe_filename")
           
           echo "Saving image as: ${safe_filename}-amd64.tar"
           docker save "$image" -o "${safe_filename}-amd64.tar"
         done
-
-    - name: Create substituted artifact name
-      run: |
-        images="${{ github.event.inputs.docker_images }}"
-        safe_name=$(echo "$images" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-        echo "SAFE_NAME=$safe_name" >> $GITHUB_ENV
+        
+        # Join safe names into a comma-separated string
+        safe_names_string=$(IFS=,; echo "${safe_names[*]}")
+        echo "SAFE_NAMES=$safe_names_string" >> $GITHUB_ENV
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.SAFE_NAME }}.tar
+        name: ${{ env.SAFE_NAMES }}.tar
         path: ./*.tar
         retention-days: 1  # 将保留天数设置为 1 天 最多可设置90天
 
